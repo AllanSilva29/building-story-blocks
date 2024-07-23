@@ -1,0 +1,259 @@
+<html>
+  <head>
+    <title>Create Your Story</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f0f0f0;
+      }
+      #container {
+        max-width: 800px;
+        margin: 0 auto;
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      textarea {
+        width: 100%;
+        height: 200px;
+        margin-bottom: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        resize: vertical;
+      }
+      .button {
+        background-color: #4caf50;
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      #previewButton {
+        background-color: #3498db;
+      }
+      #preview {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        white-space: pre-wrap;
+        line-height: 1.6;
+      }
+      .blank {
+        border-bottom: 1px solid #000;
+        min-width: 50px;
+        display: inline-block;
+        background-color: #fffae0;
+        padding: 0 5px;
+      }
+      #wordList {
+        width: 100%;
+        height: 100px;
+        margin-bottom: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        resize: vertical;
+      }
+      #wordChips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .word-chip {
+        background-color: #e0e0ff;
+        padding: 5px 10px;
+        border-radius: 5px;
+        cursor: move;
+        user-select: none;
+        display: flex;
+        align-items: center;
+      }
+      .delete-word {
+        margin-left: 5px;
+        color: #ff0000;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      #createWordButton {
+        background-color: #f39c12;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <h1>Create Your Story</h1>
+      <p>
+        Write your story below. Use [blank] to create fill-in-the-blank spaces.
+        Press Enter for new lines. You can use any text, including HTML tags or
+        special symbols.
+      </p>
+      <textarea
+        id="storyInput"
+        placeholder="Once upon a time, in [blank], there lived a [blank]...&#10;&#10;One day, they decided to [blank]."
+      ></textarea>
+      <p>
+        List the words that will be used to fill in the blanks (three pipes
+        separated):
+      </p>
+      <textarea
+        id="wordList"
+        placeholder="ancient Rome ||| medieval knights ||| Industrial Revolution ||| space exploration ||| digital age"
+      ></textarea>
+      <div id="wordChips"></div>
+      <button id="previewButton" class="button">Preview</button>
+      <button id="saveButton" class="button">Save Story</button>
+      <div id="preview"></div>
+      <button id="createWordButton" class="button">Create Word</button>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", (event) => {
+        const storyInput = document.getElementById("storyInput");
+        const wordList = document.getElementById("wordList");
+        const wordChips = document.getElementById("wordChips");
+        const previewButton = document.getElementById("previewButton");
+        const saveButton = document.getElementById("saveButton");
+        const preview = document.getElementById("preview");
+        const createWordButton = document.getElementById("createWordButton");
+
+        let previewMode = false;
+
+        wordList.addEventListener("input", updateWordChips);
+
+        function updateWordChips() {
+          const words = wordList.value
+            .split("|||")
+            .map((word) => word.trim())
+            .filter((word) => word.length > 0);
+          wordChips.innerHTML = "";
+          words.forEach((word) => {
+            const chip = document.createElement("div");
+            chip.className = "word-chip";
+            chip.innerHTML = `
+            <span>${escapeHtml(word)}</span>
+            <span class="delete-word" title="Delete word">×</span>
+          `;
+            chip.draggable = true;
+            chip.addEventListener("dragstart", dragStart);
+            chip
+              .querySelector(".delete-word")
+              .addEventListener("click", deleteWord);
+            wordChips.appendChild(chip);
+          });
+        }
+
+        function dragStart(e) {
+          e.dataTransfer.setData(
+            "text/plain",
+            e.target.firstElementChild.textContent
+          );
+        }
+
+        function deleteWord(e) {
+          const wordToDelete = e.target.previousElementSibling.textContent;
+          const words = wordList.value.split("|||").map((word) => word.trim());
+          const updatedWords = words.filter((word) => word !== wordToDelete);
+          wordList.value = updatedWords.join("||| ");
+          updateWordChips();
+        }
+
+        previewButton.addEventListener("click", togglePreview);
+
+        function togglePreview() {
+          previewMode = !previewMode;
+          if (previewMode) {
+            updatePreview();
+            previewButton.textContent = "Edit";
+            createWordButton.style.display = "inline-block";
+          } else {
+            preview.innerHTML = "";
+            previewButton.textContent = "Preview";
+            createWordButton.style.display = "none";
+          }
+        }
+
+        function updatePreview() {
+          let storyText = storyInput.value;
+          storyText = escapeHtml(storyText);
+          storyText = storyText.replace(
+            /\[blank\]/g,
+            '<span class="blank" contenteditable="true"></span>'
+          );
+          preview.innerHTML = storyText;
+
+          const blanks = preview.querySelectorAll(".blank");
+          blanks.forEach((blank) => {
+            blank.addEventListener("dragover", (e) => e.preventDefault());
+            blank.addEventListener("drop", drop);
+          });
+        }
+
+        function drop(e) {
+          e.preventDefault();
+          const data = e.dataTransfer.getData("text");
+          e.target.textContent = data;
+        }
+
+        saveButton.addEventListener("click", () => {
+          const storyText = storyInput.value;
+          const words = wordList.value;
+          const savedStories = JSON.parse(
+            localStorage.getItem("savedStories") || "[]"
+          );
+          savedStories.push({ story: storyText, words: words });
+          localStorage.setItem("savedStories", JSON.stringify(savedStories));
+          alert("Story and words saved successfully!");
+          window.location.href = "/index.html";
+        });
+
+        createWordButton.addEventListener("click", () => {
+          const previewContent = preview.textContent.trim();
+          if (previewContent) {
+            const currentWords = wordList.value
+              .split("|||")
+              .map((word) => word.trim())
+              .filter((word) => word.length > 0);
+            currentWords.push(previewContent);
+            wordList.value = currentWords.join("||| ");
+            updateWordChips();
+          }
+        });
+
+        // Load last saved story and words if they exist
+        const savedStories = JSON.parse(
+          localStorage.getItem("savedStories") || "[]"
+        );
+        if (savedStories.length > 0) {
+          const lastSaved = savedStories[savedStories.length - 1];
+          storyInput.value = lastSaved.story;
+          wordList.value = lastSaved.words;
+          updateWordChips();
+        }
+
+        function escapeHtml(unsafe) {
+          return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        }
+
+        updateWordChips();
+      });
+    </script>
+  </body>
+</html>

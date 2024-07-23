@@ -1,0 +1,155 @@
+<html>
+  <head>
+    <title>Word Story Game</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f0f0f0;
+      }
+      #container {
+        max-width: 800px;
+        margin: 0 auto;
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+        text-align: center;
+      }
+      .button {
+        background-color: #4caf50;
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      #storyList {
+        list-style-type: none;
+        padding: 0;
+      }
+      .story-item {
+        background-color: #f9f9f9;
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .story-item:hover {
+        background-color: #e9e9e9;
+      }
+      #storyDisplay {
+        margin-top: 20px;
+        padding: 20px;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        white-space: pre-wrap;
+        line-height: 1.6;
+      }
+      .blank {
+        border-bottom: 1px solid #000;
+        min-width: 50px;
+        display: inline-block;
+        padding: 0 5px;
+      }
+      #wordBank {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      .word {
+        background-color: #e0e0e0;
+        padding: 5px 10px;
+        border-radius: 5px;
+        cursor: move;
+        user-select: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <h1>Word Story Game</h1>
+      <button id="createStoryButton" class="button">Create New Story</button>
+      <h2>Saved Stories</h2>
+      <ul id="storyList"></ul>
+      <div id="storyDisplay"></div>
+      <div id="wordBank"></div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", (event) => {
+        const storyList = document.getElementById("storyList");
+        const storyDisplay = document.getElementById("storyDisplay");
+        const wordBank = document.getElementById("wordBank");
+
+        createStoryButton.addEventListener("click", () => {
+          window.location.href = "/create-story.html";
+        });
+
+        function loadStories() {
+          const savedStories = JSON.parse(
+            localStorage.getItem("savedStories") || "[]"
+          );
+          storyList.innerHTML = "";
+          savedStories.forEach((story, index) => {
+            const li = document.createElement("li");
+            li.className = "story-item";
+            li.textContent = `Story ${index + 1}`;
+            li.addEventListener("click", () => displayStory(story));
+            storyList.appendChild(li);
+          });
+        }
+
+        function displayStory(story) {
+          let storyHtml = story.story
+            .replace(
+              /\[blank\]/g,
+              '<span class="blank" contenteditable="true"></span>'
+            )
+            .replace(/\n/g, "<br>");
+          storyDisplay.innerHTML = storyHtml;
+
+          const words = story.words.split(",").map((word) => word.trim());
+          wordBank.innerHTML = "";
+          words.forEach((word) => {
+            const wordElement = document.createElement("div");
+            wordElement.className = "word";
+            wordElement.textContent = word;
+            wordElement.draggable = true;
+            wordElement.addEventListener("dragstart", dragStart);
+            wordBank.appendChild(wordElement);
+          });
+
+          const blanks = storyDisplay.querySelectorAll(".blank");
+          blanks.forEach((blank) => {
+            blank.addEventListener("dragover", (e) => e.preventDefault());
+            blank.addEventListener("drop", drop);
+          });
+        }
+
+        function dragStart(e) {
+          e.dataTransfer.setData("text/plain", e.target.textContent);
+        }
+
+        function drop(e) {
+          e.preventDefault();
+          const data = e.dataTransfer.getData("text");
+          e.target.textContent = data;
+        }
+
+        loadStories();
+      });
+    </script>
+  </body>
+</html>
